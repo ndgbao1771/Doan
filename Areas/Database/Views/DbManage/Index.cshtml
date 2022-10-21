@@ -1,0 +1,76 @@
+@using Microsoft.EntityFrameworkCore
+@using System.Data
+@using App.Menu
+@inject AdminSidebarService _AdminSidebarService
+@inject AppDbContext dbContext
+
+@{
+    ViewData["Title"] = "Thông tin DB";
+    var connect = dbContext.Database.GetDbConnection();
+    var dbname = connect.Database;
+    var can_connect = dbContext.Database.CanConnect();
+
+    var migrationPending = dbContext.Database.GetPendingMigrations();
+    var migrationsApplied = dbContext.Database.GetAppliedMigrations();
+
+    Layout = "/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<partial name="_AlertMessage" />
+
+
+<h1>Thông tin</h1>
+
+<p>- Database : @dbname</p>
+<p>- Source : @connect.DataSource</p>
+<p>- State : @connect.State</p>
+<hr>
+<h2>Migration</h2>
+@foreach (var migration in migrationsApplied)
+{
+    <p>@migration</p>
+}
+
+@foreach (var migration in migrationPending)
+{
+    <p>@migration (pending)</p>
+}
+
+@if (!can_connect)
+{
+    <p class="alert alert-danger">Không kết nối đến Database</p>
+}
+
+@if (migrationPending.Any())
+{
+    <form method="post">
+        <button class="btn btn-success" asp-action="Migrate">Create Migration</button>
+    </form>
+
+}
+
+@if (can_connect)
+{
+    <h2>Các Table</h2>
+    await dbContext.Database.OpenConnectionAsync();
+    var table = dbContext.Database.GetDbConnection().GetSchema("Tables");
+
+    <ul>
+        @foreach (System.Data.DataRow row in table.Rows)
+        {
+            <li>@row["TABLE_NAME"]</li>
+        }
+    </ul>
+
+    <a class="btn btn-danger" asp-action="DeleteDb">Delete : @dbname</a>
+    <a class="btn btn-danger" asp-action="SeedData">Seed data</a>
+}
+
+@{
+    _AdminSidebarService.SetActive("DbManage", "Index", "Database");
+}
+
+@section Sidebar 
+{
+    @Html.Raw(_AdminSidebarService.renderHtml())
+}
